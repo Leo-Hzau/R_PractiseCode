@@ -1,32 +1,35 @@
+# national economic and health visualization from 1810 to 2009
+
 #Import the Strange Dataset
-rawdata=readLines("Wealth and Health.txt")
+rawdata <- readLines("Wealth and Health.txt")
 
 #Get the useful words
-data=unlist(strsplit(rawdata,"\\[\\{\"|\":\"|\",\"|\":\\[\\[|\\],\\[|\\]\\],\"|\\]\\]\\},\\{\"|\\]\\]\\}\\]"))
-data=data[which(data!="")]
-n=length(data)
+data <- unlist(strsplit(rawdata,"\\[\\{\"|\":\"|\",\"|\":\\[\\[|\\],\\[|\\]\\],\"|\\]\\]\\},\\{\"|\\]\\]\\}\\]"))
+data <- data[which(data!="")]
+n <- length(data)
 
 #Set index
-nameind=which(data=="name")
-regind=which(data=="region")
-incind=which(data=="income")
-popind=which(data=="population")
-lifind=which(data=="lifeExpectancy")
-endpoint=nameind-1
-endpoint=endpoint[2:180]
-endpoint[180]=45999
+nameind <- which(data=="name")
+regind <- which(data=="region")
+incind <- which(data=="income")
+popind <- which(data=="population")
+lifind <- which(data=="lifeExpectancy")
+endpoint <- nameind-1
+endpoint <- endpoint[2:180]
+endpoint[180] <- 45999
 
-name=data[nameind+1]
-region=data[regind+1]
+name <- data[nameind+1]
+region <- data[regind+1]
 
 #An empty data.frame type
-initdfr=data.frame(name=rep(0,210),region=rep(0,210),year=1800:2009,income=rep(0,210),pop=rep(0,210),life=rep(0,210))
+initdfr <- data.frame(name=rep(0,210),region=rep(0,210),year=1800:2009,
+                      income=rep(0,210),pop=rep(0,210),life=rep(0,210))
 
 #An string split function only working for the comma
-splt=function(x) return(as.numeric(unlist(strsplit(x,","))))
+splt <- function(x) return(as.numeric(unlist(strsplit(x,","))))
 
 #Linear interpolation function, for those zero data
-itpl=function(a)
+itpl <- function(a)
 {
 	ind=which(a>0)
 	if (ind[1]>1)
@@ -40,7 +43,7 @@ itpl=function(a)
 }
 
 #Drag data information from words
-tbls=NULL
+tbls <- NULL
 for (i in 1:180)
 {
 	dfr=initdfr
@@ -69,12 +72,12 @@ for (i in 1:180)
 }
 
 #Two country with only one record, meaningless
-ind=which(tbls$name=="Mayotte")
-tbls=tbls[-ind,]
-ind=which(tbls$name=="Tokelau")
-tbls=tbls[-ind,]
-name=name[c(-28,-177)]
-region=region[c(-28,-177)]
+ind <- which(tbls$name=="Mayotte")
+tbls <- tbls[-ind,]
+ind <- which(tbls$name=="Tokelau")
+tbls <- tbls[-ind,]
+name <- name[c(-28,-177)]
+region <- region[c(-28,-177)]
 
 #Linear interpolation
 for (i in 1:178)
@@ -88,7 +91,7 @@ for (i in 1:178)
 require(ggplot2)
 
 #Draw function with ggplot2
-drawit=function(yr,scl=15)
+drawit <- function(yr,scl=15)
 {
     ind=which(tbls$year==yr)
 	d.f=data.frame(yr=yr)
@@ -101,7 +104,7 @@ drawit=function(yr,scl=15)
 #drawit(1800)
 
 #Automatically repeat the drawing procedure
-finaldraw=function(a,b)
+finaldraw <- function(a,b)
 {
 	for (i in 1:10)
 		print(drawit(a))
@@ -117,7 +120,7 @@ finaldraw=function(a,b)
 require(animation)
 
 #sett ffmpeg in Windows = =||
-oopts = ani.options(ffmpeg = "C:/ffmpeg/bin/ffmpeg.exe")
+oopts  <-  ani.options(ffmpeg = "C:/ffmpeg/bin/ffmpeg.exe")
 
 #Use the function from animation to make the final movie
 saveVideo({
