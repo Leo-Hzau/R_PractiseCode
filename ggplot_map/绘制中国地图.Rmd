@@ -1,0 +1,119 @@
+---
+title: "绘制中国地图"
+author: "Snake"
+date: "2016年1月29日"
+output: html_document
+---
+
+自从用了ggplot2包，越来越觉得其博大精深，通过图层的概念可以绘制丰富的可视化图形，如常见的散点图、直方图、条形图、折线图等。今天就教大家如何使用ggplot2实现地图的绘制，以及如何在地图中加入气泡图和条形图。
+
+本文所使用的数据来自于经管之家moonstone作者提供的流行病学样本数据。有关地理信息数据可至文后的下载链接。
+
+```{r}
+library(dplyr) #数据预处理
+library(maptools) #用于读取地图矢量数据
+library(ggplot2) #绘制地图
+
+#读取地图矢量数据
+map_data <- readShapePoly(file.choose())
+df_map <- map_data@data[,c('PINYIN_NAM', 'NAME')]
+head(df_map)
+#为各个省添加id
+df_map$id <- as.character(0:33)
+head(df_map)
+```
+
+注意！这里必须强调一点：不可以单独将.shp文件放置在某个路径下，还需同时将.dbf和.shx文件放到一起，否则会出现读取数据失败的问题。
+
+
+可以通过fortify()函数将.shp文件中经纬度信息返回出来。
+```{r}
+latitude_longitude <- fortify(map_data)
+head(latitude_longitude)
+```
+
+下面将latitude_longitudd与df_map表进行关联，目的是将经纬度信息对应到自个的省份中。
+```{r}
+latitude_longitude <- latitude_longitude[, c('long', 'lat', 'id')] %>% left_join(., df_map, by = 'id')
+head(latitude_longitude)
+
+```
+
+但数据集中并不是每个省只对应一个经纬度，而是各省轮廓的经纬度，下面需要为每个省创建一个经纬度，用以下文中的绘图需要。
+```{r}
+latitude_longitude <- tbl_df(latitude_longitude)
+group_id <- group_by(.data = latitude_longitude, id)
+#自定义各省份经纬度中心位置的函数
+center <- function(x) mean(range(x))
+#聚合操作
+province_location <- summarise(.data = group_id, latitude = center(lat), longitude = center(long))
+#查看数据前6行
+head(province_location)
+```
+
+```{r}
+#读取流行病样本数据
+doc_data <- read.csv(file = file.choose())
+head(doc_data)
+#仅筛选所需的字段
+doc_data_select <- select(.data = doc_data, NAME1, Population, Dct_nur)
+head(doc_data_select )
+#对原数据集的字段重命名
+doc_data_select <- rename(.data = doc_data_select, NAME = NAME1)
+head(doc_data_select)
+```
+
+下面将latitude_longitude表数据与doc_data_select表数据进行关联，目的是将各省份的位置、名称、人口和平均每千人医护人员数锁定到一起，用于下文的绘图需要。
+```{r}
+Province_Info <- province_location %>% left_join(., df_map, by = 'id') %>% left_join(., doc_data_select, by = 'NAME')
+head(Province_Info)
+```
+
+将各省份轮廓经纬度数据与各省的医疗数据关联
+```{r}
+latitude_longitude <- latitude_longitude %>% left_join(., Province_Info[, c('id','Population','Dct_nur')], by = 'id')
+head(latitude_longitude)
+```
+
+目前所需数据均已准备好，包括各省中心点的经纬度、各省轮廓经纬度数据和各省流行病数据。下面就使用这些数据实现地图的绘制。
+```{r}
+#使用多边形绘图函数geom_polygon()绘制空的地图
+ggplot(data = latitude_longitude, mapping = aes(x = long, y = lat,  group = id)) + geom_polygon(colour = 'black', fill = 'white')
+#总觉得图中坐标轴的存在很别扭，该如何清除这些不必要的东西呢？
+
+#清除不必要的附件(轴标签、刻度标签、刻度标记和网格线)
+ggplot(data = latitude_longitude, mapping = aes(x = long, y = lat,  group = id)) + geom_polygon(colour = 'black', fill = 'white') + theme(axis.title = element_blank()) + theme(axis.text = element_blank()) + theme(axis.ticks = element_blank()) + theme(panel.grid = element_blank())
+```
+
+theme(axis.title = element_blank())用于清除图中的x轴和y轴标签
+theme(axis.text = element_blank())用于清除图中x轴和y轴的刻度标签
+theme(axis.ticks = element_blank())用于清除图中x轴和y轴的刻度标记
+theme(panel.grid = element_blank())用于清除图中的网格线
+```{r}
+#将各省份的名称显示在地图中，这里多个主题函数theme()可以将参数写到一起。
+ggplot(data = latitude_longitude, mapping = aes(x = long, y = lat,  group = id)) + geom_polygon(colour = 'black', fill = 'white') + scale_fill_manual(values=colours(),guide=FALSE) + geom_text(mapping = aes(x = longitude, y = latitude, label = NAME), data = Province_Info, colour = 'steelblue') + theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
+```
+
+不错，就是通过图层叠加的方法，将对于位置的省份名称贴在地图中。这里通过geom_text()函数实现，需要注意的是，geom_text()函数又使用了另一个数据框的数据内容。
+```{r}
+#用颜色填充各个省份，颜色深浅表示“平均每千人医护人员数”的多少
+ggplot(data = latitude_longitude, mapping = aes(x = long, y = lat,  group = id, fill = Dct_nur)) + geom_polygon(colour = 'black') + scale_fill_gradient(low = 'green', high = 'blue') + labs(title ="Numbers of doctor nand nurse per 1000 persons in China") +  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
+```
+
+发现图中，台湾地区的颜色为灰色，并不在对于的色阶中，是因为医疗数据中没有对应的台湾数据。其实香港和澳门也没响应的数据，这里并没法发现，是因为这两个地区面积太小而无法识别出。
+```{r}
+#在上一幅图的基础上，在绘制气泡图，气泡大小表示人口数量
+ggplot(data = latitude_longitude, mapping = aes(x = long, y = lat,  group = id, fill = Dct_nur)) + geom_polygon(colour = 'black') + geom_point(mapping = aes(x = longitude, y = latitude, size = Population), data = Province_Info, colour = 'red') + scale_fill_gradient(low = 'white', high = 'blue') + labs(title ="Numbers of doctor nand nurse per 1000 persons in China") + scale_size_area() + theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
+#这里港澳台地区的人口数位置，故没有响应的气泡。
+```
+
+除了可以在地图里添加气泡图，还可以往地图里添加条形图，具体如下：
+```{r}
+ggplot() + geom_polygon(data = latitude_longitude, mapping = aes(x = long, y = lat,  group = id, fill = Dct_nur), colour = 'black') + geom_errorbar(mapping = aes(x = longitude, ymin = latitude, ymax =latitude + Population*50), data = Province_Info, colour = 'brown', size = 3, width = 1, alpha = 0.8) + geom_text(mapping = aes(x = longitude, y = latitude, label = NAME), data = Province_Info, colour = 'black') + scale_fill_gradient(low = 'white', high = 'blue') + labs(title ="Numbers of doctor nand nurse per 1000 persons in China") + scale_size_area() + theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid = element_blank())
+#需要提醒的是，ggplot()函数里不能传任何参数，地图只能在geom_polygon()函数中绘制，否则又将报错。
+```
+
+由于省份中心位置不是很准确，导致有些省名称、气泡和条形图没有落在准确的位置，后期将对省份中心位置的经纬度做进一步调整。
+
+参考资料：
+http://bbs.pinggu.org/thread-4182165-1-1.html
