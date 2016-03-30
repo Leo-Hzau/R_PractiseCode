@@ -1,0 +1,201 @@
+---
+title: "人工神经网络"
+author: "Snake"
+date: "2015年12月19日"
+output: html_document
+---
+
+人工神经网络是一种类似于大脑神经突触连接的结构进行信息处理的数学模型，由大量的输入层节点、隐藏层节点和输出层节点连接构成。其构造类似于下图：
+
+上图中明确显示了输入层、隐藏层和输出层，红框表示节点与节点之间连接函数（或激活函数），黄框表示上一个节点到下一个节点变换权重。所以，有关神经网络算法最核心的三个问题就是：选择激活函数、隐藏层数目和节点的确定以及权重的设置。
+
+选择激活函数
+这里简单介绍以下6种激活函数：
+
+其中最为常用的是Logistic激活函数、双曲正切激活函数和高斯激活函数，R中一般默认使用Logistic激活函数。通常情况下，激活函数的输出信号值范围可以是(0,1)、(-1,1)、(-∞,∞)，而输入信号之和的范围可以是(-∞,∞)，如果仔细看图的话，会发现随着输入信号之和的绝对值越大，输出信号值始终为0或1或-1，这样的结果将会失真。所以一般需要将输入信号X变量压缩到0附近，通常的做法是数据标准化，以下自定义标准化函数：
+```{r}
+standard1 <- function(x){
+  (x-min(x))/(max(x)-min(x))
+}
+standard2 <- function(x){
+  (x-mean(x))/sd(x)
+}
+```
+前一种是最大最小标准化，后一种是标准正态化。如果数据集基本服从正态分布的话，可以考虑使用后一种标注化方法；否则就使用前一种标准化方法。
+
+选择隐藏层数目和节点数量
+如上文中的神经网络图所示，只有1层隐藏层，称其为单层网络，单层网络一般可用于基本的模式分类，特别是可用于能够线性分割的模式，但实际中往往需要更多的隐藏层，目前多层前馈网络已成为人工神经网络拓扑结构的事实标准。多层隐藏层的神经网络图：
+
+除了隐藏层数目可以改动，其每层的节点数量也可以灵活的改变，对于节点数量的选择可以通过循环测试，最终挑选出比较理想的节点数量。
+一般情况下，随着隐藏层数目和节点数量的增加，使神经网络显得尤为复杂，实现复杂问题的学习，但是这样的模型会产生过拟合的风险，而且计算量的增加导致训练缓慢。
+
+权重的设置
+通过调整连接权重训练神经网络模型的计算量非常巨大，因此很少将其应用到真实世界的学习任务中。幸运的是，一种有效的训练人工神经网络的方法被发现，其可以解决权重的设置的问题，该算法使用了一种后向传播误差的策略（Backpropagation）。
+
+神经网络算法优缺点
+优点：
+1）适用于分类和数值预测问题
+2）对数据几乎不作任何假设条件
+缺点：
+1）计算量大、训练缓慢，尤其是网络拓扑结构相当复杂时
+2）容易发生过拟合
+3）输出结果很难解释
+
+有关R中神经网络算法的实现可以使用自带的nnet包，也可以使用neuralnet包，还可以使用一套完整的神经网络功能包RSNNS。
+nnet包中的函数nnet()语法：
+nnet(formula, data, weights, ...,
+     subset, na.action, contrasts = NULL)
+
+nnet(x, y, weights, size, Wts, mask,
+     linout = FALSE, entropy = FALSE, softmax = FALSE,
+     censored = FALSE, skip = FALSE, rang = 0.7, decay = 0,
+     maxit = 100, Hess = FALSE, trace = TRUE, MaxNWts = 1000,
+     abstol = 1.0e-4, reltol = 1.0e-8, ...)
+formula：模型的公式表达形式，类似于y~x1+x2+x3
+data：指定要分析的数据对象
+weights：代表各类样本在模型中所占比重，默认将各类样本按原始比重建立模型
+subset：可提取目标数据集的子集作为模型的训练样本
+na.action：处理缺失值的方法，默认忽略缺失值
+x：为输入的自变量矩阵或数据框
+y：为输入的因变量，但必须经过class.ind()函数的预处理
+size指定隐藏层节点个数，通常为输入变量个数的1.2至1.5倍
+Wts：设置初始的权重，默认情况将随机产生权重值
+mask：指定哪个参数需要最优化，默认全部参数都需要最优化
+linout：指定线性输出还是Logistic输出，默认为Logistic输出
+rang：设置初始权重值的范围[-rang,rang]
+decay：指模型建立过程中，模型权重值的衰减精度，默认为0
+maxit：指定模型的最大迭代次数
+
+RSNNS包中的mlp()函数--多层前馈网络
+mlp(x, y, size = c(5), maxit = 100,
+  initFunc = "Randomize_Weights", initFuncParams = c(-0.3, 0.3),
+  learnFunc = "Std_Backpropagation", learnFuncParams = c(0.2, 0),
+  updateFunc = "Topological_Order", updateFuncParams = c(0),
+  hiddenActFunc = "Act_Logistic", shufflePatterns = TRUE, linOut = FALSE,
+  inputsTest = NULL, targetsTest = NULL, pruneFunc = NULL,
+  pruneFuncParams = NULL, ...)
+x：为输入的自变量矩阵或数据框
+y：为输入的因变量
+size：指定每个隐藏层的节点数，默认是单层5节点的拓扑结构
+maxit：指定模型的最大迭代次数
+initFunc：指定权重的初始函数
+initFuncParams：权重的初始值默认在(-0.3, 0.3)之间
+learnFunc：指定计算神经网络的算法类型，默认为标准后向传播算法
+learnFuncParams：指定学习算法参数的初始值，即学习速率和最大输出误差
+updateFunc：指定替换的算法类型
+hiddenActFunc：指定隐藏层的算法类型
+linOut：指定输出层的激活函数，可以是线性或Logistic
+
+neuralnet包中的neuralnet()函数语法
+neuralnet(formula, data, hidden = c(1), threshold = 0.01,        
+          stepmax = 1e+05, rep = 1, startweights = NULL, 
+          learningrate.limit = NULL, 
+          learningrate.factor = list(minus = 0.5, plus = 1.2), 
+          learningrate=NULL, lifesign = "none", 
+          lifesign.step = 1000, algorithm = "rprop+", 
+          err.fct = "sse", act.fct = "logistic", 
+          linear.output = TRUE, exclude = NULL, 
+          constant.weights = NULL, likelihood = FALSE)
+formula：模型的公式表达形式，类似于y~x1+x2+x3，不允许y~.的格式
+data：指定要分析的数据对象
+hidden：指定每个隐藏层的节点数，默认是单层1节点的拓扑结构
+threshold：指定误差函数的偏差阈值，默认为0.01
+stepmax：指定模型的最大迭代次数
+rep：指定神经网络训练的次数
+startweights：设置初始的权重，默认情况将随机产生权重值
+learningrate.limit：指定学习速率的最小最大值，该参数仅对RPROP和 GRPROP方法起效
+learningrate：可为后向传播算法指定学习速率
+algorithm：指定计算神经网络的算法类型
+但该包只能处理连续型因变量的预测。
+
+应用
+本文尝试使用神经网络算法对乳腺癌进行分类，数据来自于《机器学习与R语言》中的案例，数据包括569条样本和32个变量。
+```{r}
+#读取数据
+cancer <- read.csv(file = file.choose())
+str(cancer)
+除样本的标识号ID以外，diagnosis变量为目标变量，其余都是数值型变量。
+#数据标准化
+cancer_stand <- sapply(cancer[,-c(1,2)], standard1)
+#数据合并
+cancer_stand <- as.data.frame(cbind(diagnosis = cancer$diagnosis, cancer_stand))
+#将目标变量转换为因子
+cancer_stand$diagnosis <- factor(cancer_stand$diagnosis, levels = c(1,2), labels = c('B','M'))
+
+#构建训练样本集和测试样本集
+set.seed(1234)
+index <- sample(c(1,2), nrow(cancer_stand), replace = TRUE, prob = c(0.8,0.2))
+train <- cancer_stand[index == 1,]
+test <- cancer_stand[index == 2,]
+
+#使用nnet包中的nnet()函数建模
+library(nnet)
+#通过循环，确定最佳的节点数
+err1 <- 0
+err2 <- 0
+for (i in 1:45){
+  set.seed(1234)
+  model <- nnet(diagnosis ~ ., data = train, maxit = 300, size = i, trace = FALSE)
+  err1[i] <- sum(predict(model, train, type = 'class') != train$diagnosis)/nrow(train)
+  err2[i] <- sum(predict(model, test, type = 'class') != test$diagnosis)/nrow(test)
+}
+plot(err1, type = 'b', col = 'black', lty = 2, lwd = 2, ylab = '误差', xlab = '节点数', ylim = c(0,0.05), pch = 10)
+lines(err2, type = 'b', col = 'blue', lty = 2, lwd = 2, pch = 23)
+legend(locator(1), legend = c('训练集误差率','测试集误差率'), col = c('black','blue'), lty = c(2,2), lwd = c(2,2), bty = 'n',
+       pch = c(10,23))
+通过返回的图形结果，选择最佳的节点数为4
+
+#通过循环，确定最大迭代次数
+err1 <- numeric()
+err2 <- numeric()
+for (i in 1:500){
+  set.seed(1234)
+  model <- nnet(diagnosis ~ ., data = train, maxit = i, size = 4, trace = FALSE)
+  err1[i] <- sum(predict(model, train, type = 'class') != train$diagnosis)/nrow(train)
+  err2[i] <- sum(predict(model, test, type = 'class') != test$diagnosis)/nrow(test)
+}
+plot(err1, type = 'l', col = 'black', lty = 1,  ylab = '误差', xlab = '节点数')
+lines(err2, type = 'l', col = 'blue', lty = 4)
+legend(locator(1), legend = c('训练集误差率','测试集误差率'), col = c('black','blue'), lty = c(1,4), bty = 'n')
+通过返回的图形结果，选择最大迭代次数为50
+
+#建立最终的神经网络模型
+set.seed(1234)
+model_nnet <- nnet(diagnosis ~ ., data = train, maxit = 50, size = 4, trace = FALSE)
+pred_nnet <- predict(model_nnet, test, type = 'class')
+#预测精度
+Freq_nnet <- table(test$diagnosis, pred_nnet)
+Freq_nnet
+accuracy_nnet <- sum(diag(Freq_nnet))/sum(Freq_nnet)
+accuracy_nnet
+模型准确判断率超过99%，模型非常完美的刻画了数据。
+
+#使用RSNNS包中的mlp()函数建模
+library(RSNNS)
+#将数据顺序打乱
+data_cancer = cancer[sample(1:nrow(cancer),length(1:nrow(cancer))),2:ncol(cancer)]
+#定义网络输入
+cancerValues= data_cancer[,-1]
+#定义网络输出，并将数据进行格式转换
+cancerTargets = decodeClassLabels(data_cancer[,1])
+#从中划分出训练样本和检验样本
+set.seed(1234)
+model_cancer = splitForTrainingAndTest(cancerValues, cancerTargets, ratio=0.20)
+#数据标准化
+model_cancer = normTrainingAndTestSet(model_cancer, type = '0_1')
+#利用mlp命令执行前馈反向传播神经网络算法
+model_mlp = mlp(model_cancer$inputsTrain, model_cancer$targetsTrain, size=4, maxit=100, inputsTest=model_cancer$inputsTest, targetsTest=model_cancer$targetsTest) 
+#利用上面建立的模型进行预测
+pred_mlp  = predict(model_mlp, model_cancer$inputsTest)
+#生成混淆矩阵，观察预测精度
+Freq_mlp <- confusionMatrix(model_cancer$targetsTest,pred_mlp)
+Freq_mlp
+accuracy_mlp <- sum(diag(Freq_mlp))/sum(Freq_mlp)
+accuracy_mlp
+模型的预测能力也非常高，准确率超过95%，但相比于nnet()函数准确率明显下降。
+
+参考资料
+机器学习与R语言
+数据挖掘：R语言实战
+http://ju.outofmemory.cn/entry/84442
+http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/

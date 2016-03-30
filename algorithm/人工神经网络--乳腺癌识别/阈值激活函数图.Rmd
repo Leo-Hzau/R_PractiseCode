@@ -1,0 +1,46 @@
+---
+title: "阈值激活函数"
+author: "Snake"
+date: "2015年12月19日"
+output: html_document
+---
+
+阈值激活函数
+```{r}
+x <- seq(from = -10, to = 10, length = 1000)
+y1 <- ifelse(x >= 0, 1, 0)
+#S形激活函数（Logistic函数）
+y2 <- exp(x)/(1+exp(x))
+#线性激活函数
+y3 <- x
+#饱和线性激活函数
+y4 <- numeric()
+for(i in 1 : length(x)){
+  if(x[i]<=-3)
+    y4[i] <- -3
+  else if(x[i]>=3)
+    y4[i] <- 3
+  else
+    y4[i] <- x[i]
+}
+
+#双曲正切激活函数
+y5 <- (exp(x)-exp(-x))/(exp(x)+exp(-x))
+#高斯激活函数
+y6 <- dnorm(x)
+
+library(ggplot2)
+library(gridExtra)
+p1 <- ggplot(data = NULL, mapping = aes(x = x, y = y1)) + geom_line() + labs(x = '输入信号之和', y = '输出信号', title = '阈值激活函数')
+
+p2 <- ggplot(data = NULL, mapping = aes(x = x, y = y2)) + geom_line() + labs(x = '输入信号之和', y = '输出信号', title = 'Logistic激活函数')
+
+p3 <- ggplot(data = NULL, mapping = aes(x = x, y = y3)) + geom_line() + labs(x = '输入信号之和', y = '输出信号', title = '线性激活函数')
+
+p4 <- ggplot(data = NULL, mapping = aes(x = x, y = y4)) + geom_line() + labs(x = '输入信号之和', y = '输出信号', title = '饱和线性激活函数')
+
+p5 <- ggplot(data = NULL, mapping = aes(x = x, y = y5)) + geom_line() + labs(x = '输入信号之和', y = '输出信号', title = '双曲正切激活函数')
+
+p6 <- ggplot(data = NULL, mapping = aes(x = x, y = y6)) + geom_line() + labs(x = '输入信号之和', y = '输出信号', title = '高斯激活函数')
+
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 3)

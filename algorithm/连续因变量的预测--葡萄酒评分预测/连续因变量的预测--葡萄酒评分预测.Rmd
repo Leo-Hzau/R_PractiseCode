@@ -1,0 +1,152 @@
+---
+title: "连续因变量的预测--葡萄酒评分预测"
+author: "Snake"
+date: "2015年12月18日"
+output: html_document
+---
+
+在前面几篇文章中都是对分类变量的判别，即根据建立的分类器，预测未知样本所属的类别。本文将从连续因变量的角度，预测新样本可能的Y值。对于连续变量的预测模型，往往会想到回归，而回归也恰恰是应用比较广泛的模型之一，除此之外，还有分类回归树、模型树、支持向量机、神经网络等。接下来将对线性回归、分类回归树和模型树做一个对比，分析各模型对葡萄酒评分预测的准确度。
+
+1.1、线性回归模型
+关于线性回归模型的假设条件和应用可参考本公众号《R语言下的线性回归模型》和《基于R语言的线性回归模型的诊断》两篇文章，这里不再赘述。
+
+1.2、优缺点
+优点：
+1）可适用于所有类型的数据
+2）能够反映自变量与因变量之间关系的强度和大小
+3）模型结果易于解释
+缺点：
+1）很难满足所有的假设假设前提，如因变量服从正态分布等
+2）不能很好的处理缺失值
+3）对离散变量需要哑变量处理
+
+2.1、分类回归树
+有关分类回归树模型的介绍可参考本公众号《基于R语言的数据挖掘之决策树（一）》一文，文中详细介绍了R中分类回归树算法实现的函数及语法，同时还例举了分类问题的判别例子。
+与《基于R语言的数据挖掘之决策树（一）》不同的是，本文是对连续因变量的预测，其核心思想是使用叶节点样本的均值作为预测值。
+
+2.2、优缺点
+优点：
+1）对数据的分布不作任何要求
+2）对缺失数据不敏感
+3）结果易于解释
+缺点：
+容易产生过拟合
+
+3.1、模型树
+模型树与分类回归树以大致相同的方式生长，所不同的是，模型树将对各个叶节点样本建立多元线性回归模型，再根据线性回归模型进行预测。R语言实现该算法的函数来自于RWeka包中的M5P()函数，其语法如下：
+M5P(formula, data, subset, na.action,
+    control = Weka_control(), options = NULL)
+formula模型的公式形式；
+data要分析的数据集；
+subset可以提取数据集中的样本作为分析对象；
+na.action缺失值的处理办法，默认忽略缺失值；
+control指定模型的其他限制条件。
+
+3.2、优缺点
+优点：
+1）能够结合分类回归树和线性回归模型的优点
+2）无需事先指定线性回归模型的形式
+缺点：
+1）需要大量的训练数据才能保证预测准确率
+2）结果不易解释
+
+4、应用
+为了研究葡萄酒评分模型，这里使用《机器学习与R语言》书中提供的数据，数据共包括4898条记录和12个变量，接下来通过模型应用和比较，来分析这三个模型对该数据集的准确性。
+
+```{r}
+#数据读取
+wine <- read.csv(file = file.choose())
+探索性数据分析
+#数据结构
+str(wine)
+数据集中的12个变量均为数值型变量
+#相关系数
+cor(wine)
+很显然，变量一旦多起来时，矩阵式的相关系数读起来就显得非常吃力，可以考虑将相关系数可视化，有助于一目了然。
+#相关系数图
+library(corrplot)
+corr <- cor(wine)
+corrplot(corr = corr, order ='AOE')
+通过图可知，酒精度与密度存在很强的负相关，而酒精度和糖分含量又存在高正相关，葡萄酒评分与酒精度存在明显正相关，与密度又存在负相关。
+#葡萄酒评分分布
+library(ggplot2)
+histgram <- ggplot(data = wine, aes(x = quality))
+histgram + geom_histogram( fill = 'blue', binwidth = 1) 
+葡萄酒评分基本符合正态分布，满足线性回归分析中对因变量服从正态分布的要求。
+#抽取训练样本(70%)和测试样本(30%)
+index = sample(c(1,2), nrow(wine), replace = TRUE, prob = c(0.7,0.3))
+train <- wine[index == 1,]
+test <- wine[index == 2,]
+
+#构建线性回归模型
+fit_lm1 <- lm(quality ~ ., data = train)
+summary(fit_lm1)
+发现模型中的几个变量并不显著，如fixed.acidity变量，chlorides变量等。
+下面使用逐步回归的方法挑选出所有显著的变量
+fit_lm2 <- step(fit_lm1)
+summary(fit_lm2)
+经过逐步回归后，当前模型的自变量均已显著，且模型也通过了显著性检验
+
+#预测
+pred_lm <- predict(object = fit_lm2, newdata = test)
+summary(pred_lm)
+summary(test$quality)
+发现线性回归模型对极端值的预测能力较差，模型比较保守。
+#预测精度
+这里使用平均绝对误差和均方误差根来衡量模型的预测精度，这两个值越小，说明模型的预测精度越高。具体计算方法如下：
+#自定义精确度量函数
+accuracy <- function(actual,preditor){
+  mad <- mean(abs(actual-preditor))
+  sde <- sqrt(mean((actual-preditor)^2))
+  return(data.frame(mad = mad, sde = sde))
+}
+accuracy(test$quality,pred_lm)
+
+#构建分类回归树模型
+library(rpart)
+fit_rpart <- rpart(quality ~ ., data = train)
+fit_rpart
+从结果中看，分类回归树最终生成6个叶节点，例如当alcohol< 10.85且volatile.acidity>=0.3025时，产生658个观测进入该节点，其平均值为5.245。所以任何一个满足该条件的新样本，其得分都用5.245作为预测。
+#分类回归树的可视化
+library(rpart.plot)
+rpart.plot(fit_rpart)
+#预测
+pred_rpart <- predict(object = fit_rpart, newdata = test)
+summary(pred_rpart)
+summary(test$quality)
+发现预测值与实际值相差似乎更大了，最大值与最小值的预测范围更小了。
+#预测精度
+accuracy(test$quality,pred_rpart)
+从预测精度看，分类回归树确实比线性回归模型要差一点点。
+
+#构建模型树模型
+library(RWeka)
+fit_m5p <- M5P(quality ~ ., data = train)
+fit_m5p
+结果产生20个叶节点，并且返回每个叶节点中的多元线性回归模型，如下图：
+
+summary(fit_m5p)
+上图反映了训练样本集建模后模型的准确率，平均绝对误差为0.53，均方误差根为0.68。下面看一看模型在测试集上的精确度：
+pred_m5p <- predict(object = fit_m5p, newdata = test)
+summary(pred_m5p)
+summary(test$quality)
+accuracy(test$quality,pred_m5p)
+模型的平均绝对误差和均方误差根均有所降低，说明该模型相比与其他两个模型的预测更准确，这也恰恰说明了该模型很好的结合了这两个模型的优点。
+
+参考资料：
+机器学习与R语言
+
+总结：文中涉及的R包和函数
+cor()
+corrplot包
+corrplot()
+ggplot2包
+geom_histogram()
+lm()
+summary()
+step()
+predict()
+rpart包
+rpart()
+RWeka包
+M5P()
