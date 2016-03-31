@@ -20,12 +20,13 @@ df_all$age[df_all$age < 0] <- mean(df_all$age[df_all$age > 0])
 ohe_feats = c('gender', 'education', 'employer')
 dummies <- dummyVars(~ Gender +  Education + Self_Employed, data = df_all)
 df_all_ohe <- as.data.frame(predict(dummies, newdata = df_all))
-df_all_combined <- cbind(df_all[,-c(which(colnames(df_all) %in% ohe_feats))],df_all_ohe)
+#df_all_combined <- cbind(df_all[,-c(which(colnames(df_all) %in% ohe_feats))],df_all_ohe)
+df_all_combined <- cbind(df_all,df_all_ohe)
 df_all_combined$agena <- as.factor(ifelse(df_all_combined$age < 0,1,0))
 df_all_combined <- df_all_combined[,c('id',features_selected)] 
 # split train and test
-X = df_all_combined[df_all_combined$id %in% df_train$id,]
-y <- recode(labels$labels,'True'=1; 'False'=0)
+X <- df_all_combined[df_all_combined$id %in% df_train$id,]
+y <- recode(labels$labels,'True'=1, 'False'=0)
 X_test = df_all_combined[df_all_combined$id %in% df_test$id,]
 
 xgb <- xgboost(data = data.matrix(X[,-1]), 
