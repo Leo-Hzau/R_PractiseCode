@@ -1,3 +1,4 @@
+#http://mp.weixin.qq.com/s?__biz=MzA4NDgyMzkyMA==&mid=400526074&idx=1&sn=462d6266d448bfb9f7a4239b41825f3e#rd
 #一、Logistic模型简介,该模型是一个非线性模型，具有S型分布，可见下图：
 #绘制Logistic曲线
 x <- seq(from = -10, to = 10, by = 0.01)
