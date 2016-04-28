@@ -14,6 +14,15 @@ str(my_data)
 library(dummies)
 #create a dummy data frame
 new_my_data <- dummy.data.frame(my_data, names = c("international_plan","voice_mail_plan"))
+
+#方法一：
+library(psych)
+fa.parallel(new_my_data,fa = "pc",n.iter = 100,show.legend = F,
+            main = "scree plot with parallel analysis")
+#碎石图（直线和x符号）、特征值大于1准则（水平线）和100次模拟的平行分析建议保留12个主成分
+PC<-principal(new_my_data,nfactors = 12, rotate = "varimax", scores = T)
+
+#方法二：
 prin_comp <- prcomp(new_my_data, scale. = T)
 names(prin_comp)
 #outputs the mean of variables
