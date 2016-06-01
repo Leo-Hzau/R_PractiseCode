@@ -92,3 +92,65 @@ plot(prf)
 auc <- performance(pr, measure = "auc")
 auc <- auc@y.values[[1]]
 auc
+
+
+#数据探查
+#生还与死亡对比
+barplot(table(train$Survived),names.arg=c("死亡","生还"),
+        main="生还 vs 死亡")
+#不同舱位等级的影响
+survive.rate.class <- table(train$Survived,train$Pclass)
+barplot(survive.rate.class,names.arg=c("一等","二等","三等"),
+        main="不同舱位生还 vs 死亡",
+        legend.text=c("死亡","生还"),
+        args.legend=list(x="topleft"))
+#不同仓位生还率
+round((survive.rate.class[2,]/colSums(survive.rate.class))*100,2)
+#不同性别的生还率对比
+survive.rate.sex <- table(train$Survived,train$Sex)
+barplot(survive.rate.sex,names.arg=c("女","男"),
+        main="不同性别生还 vs 死亡",
+        legend.text=c("死亡","生还"),
+        args.legend=list(x="topleft"))
+round((survive.rate.sex[2,]/colSums(survive.rate.sex))*100,2)
+#不同年龄的生还率
+age.breaker <- c(0,18,50,100)
+age.cut <- cut(train$Age,breaks=age.breaker,labels=c("小孩","成年人","老人"))
+train$age.cut <- age.cut
+survive.rate.age <- table(train$Survived,train$age.cut)
+barplot(survive.rate.age,
+        main="不同年龄生还 vs 死亡",
+        legend.text=c("死亡","生还"),
+        args.legend=list(x="topleft"))
+round((survive.rate.age[2,]/colSums(survive.rate.age))*100,2)
+
+#马赛克图，利用mosaicplot图
+mosaicplot(train$Pclass ~ train$Survived,
+           main="不同舱位等级生还 vs 死亡 ", shade=FALSE,
+           color=TRUE,  xlab="舱位", ylab="生还")
+mosaicplot(train$Sex ~ train$Survived,
+           main="不同性别生还 vs 死亡 ", shade=FALSE,
+           color=TRUE,  xlab="性别", ylab="生还")
+#相关性分析
+#前面大致可以得出性别，年龄，舱位对生还率有很大影响，那么其他的票价，上船的港口，在那个cabin等等变量对生还率有影响吗？这里用相关性分析来观察一下：
+train.corrgram <- train
+# 相关性分析要求全部为数字
+train.corrgram$Survived <-  as.numeric(train.corrgram$Survived)
+train.corrgram$Pclass <-  as.numeric(train.corrgram$Pclass)
+train.corrgram$Embarked <-  as.numeric(train.corrgram$Embarked)
+train.corrgram$Sex <- as.numeric(train.corrgram$Sex)
+train.corrgram[which(is.na(train.corrgram$Embarked)),]$Embarked=3
+cor(train.corrgram[,corrgram.vars])
+## Error: object 'corrgram.vars' not found
+
+#这里大致可以看出除了Pclass,Sex,Age以为，Fare还和生还率有关，而Embarked似乎也有一定关系（虽然理论上来讲登船地点应该与这个无关？）而Age由于有大量缺失值这里相关性为NA,下一步的目标似乎应该是在于如何处理这些缺失的数据上面。
+#图形分析也许更简单快捷，直接使用corrgram来分析。
+require(corrgram)
+## Loading required package: corrgram
+## Loading required package: seriation
+# 字符变量这里不考虑
+corrgram.vars = c("Survived", "Pclass",  "Sex", "Age",
+                  "SibSp", "Parch", "Fare", "Embarked")
+corrgram(train.corrgram[,corrgram.vars],  lower.panel=panel.ellipse, 
+         upper.panel=panel.pie,text.panel=panel.txt,  main="泰坦尼克生还率相关性分析")
+#http://www.aiweibang.com/yuedu/64709031.html
