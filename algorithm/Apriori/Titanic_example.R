@@ -39,3 +39,5 @@ library(arulesViz)
 plot(rules)
 plot(rules,method="graph",control = list(type = "items"))
 plot(rules,method="paracoord",control = list(record = T))
+#基于分组矩阵的可视化
+plot(rules,method = "grouped")
